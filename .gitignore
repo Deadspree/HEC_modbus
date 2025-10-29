@@ -1,0 +1,10 @@
+scripts/dict.py
+scripts/draw_center.py
+log
+*.mp4
+*.avi
+*.jpg
+__pycache__
+fairino-python-sdk-main
+utils
+.vscode/
