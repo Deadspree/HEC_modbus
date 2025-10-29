@@ -1,16 +1,15 @@
 # HEC_modbus
 
-## Run the code using:
+## Run the code using
 ```bash
-python pose_estimation.py
+python tcam_marker.py -rt True
 ```
 
-## Click on the realtime window
-- press "c" for calculating the camera_marker_matrix
-- press "s" to save the matrix to JSON file
-- press "q" to quit the program
+## Command for function
+- Press "c" to calculate tcam_marker
+- Press "s" to save the matrix to JSON file
+- Press "q" to stop the program
 
-## Demo Video: 
+## Demo video:
 
-https://github.com/user-attachments/assets/d8c722e8-9bec-4ebb-9e5b-23ae82ab6158
-
+https://github.com/user-attachments/assets/1d7ef85b-63f8-49e8-bf9c-259e4bcb307d

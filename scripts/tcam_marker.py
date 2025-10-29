@@ -210,12 +210,16 @@ def pose_estimation(image: np.ndarray,matrix_coefficients_path: (str), distortio
 
 def main():
     """
-    !Aruco realtime estimation pipeline
+    !Tcam_marker realtime calculation pipeline
 
-    Usage: pose_estimation.py input_path output_path
+    Usage: pose_estimation.py -rt True
+
+    !Aruco Marker detection with input video
+
+    Usage: pose_estimation.py -i input_video -o output_video
 
     """
-    parser = argparse.ArgumentParser(description="Aruco Marker Detection")
+    parser = argparse.ArgumentParser(description="Aruco Marker Detection and Tcam_marker calculation")
     parser.add_argument("-i", "--input", help="Path to input image")
     parser.add_argument("-o", "--output", help="Path to output image")
     parser.add_argument("-rt", "--realtime", default=False, help="True to open" )
