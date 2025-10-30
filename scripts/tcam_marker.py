@@ -212,11 +212,11 @@ def main():
     """
     !Tcam_marker realtime calculation pipeline
 
-    Usage: pose_estimation.py -rt True
+    Usage: tcam_marker.py -rt True
 
     !Aruco Marker detection with input video
 
-    Usage: pose_estimation.py -i input_video -o output_video
+    Usage: tcam_marker.py -i input_video -o output_video
 
     """
     parser = argparse.ArgumentParser(description="Aruco Marker Detection and Tcam_marker calculation")
