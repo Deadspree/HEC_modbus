@@ -1,9 +1,14 @@
 scripts/dict.py
 scripts/draw_center.py
+scripts/calibration.py
+scripts/circle_test.py
+scripts/second_station.ipynb
+scripts/tsailenz.py
 log
 *.mp4
 *.avi
 *.jpg
+*.jpeg
 __pycache__
 fairino-python-sdk-main
 utils
