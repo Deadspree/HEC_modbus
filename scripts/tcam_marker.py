@@ -129,11 +129,13 @@ def process_video(input_path: str, output_path: str, realtime: bool) -> None:
             if cv2.waitKey(1) == ord('q'):    
                 break
             if cv2.waitKey(1) == ord('c'):
-                rvec = rvec.flatten()
-                tvec = tvec.flatten()
-                R_cm, _ = cv2.Rodrigues(rvec)
+                rvec1 = rvec.flatten()
+                tvec1 = tvec.flatten()
+                print("rvec1: ", rvec1)
+                print("rvec2: ")
+                R_cm, _ = cv2.Rodrigues(rvec1)
                 T_cam_marker[:3, :3] = R_cm
-                T_cam_marker[:3, 3] = tvec
+                T_cam_marker[:3, 3] = tvec1
                 print("T_cam_marker calculated:")
                 print(T_cam_marker)
             if cv2.waitKey(1) == ord('s'):
