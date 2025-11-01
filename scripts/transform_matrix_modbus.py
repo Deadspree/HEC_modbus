@@ -204,7 +204,7 @@ def calculate_T_base_ee(x: float, y: float, z: float, rx: float, ry: float, rz: 
 
 #capture_image("images1.jpg")
 #calculate_T_base_ee(-549.362,42.653,561.389,6.518,54.629,159.229)
-#calculate_T_camera_marker("images1.jpg")
+calculate_T_camera_marker("images1.jpg")
 
 
 
