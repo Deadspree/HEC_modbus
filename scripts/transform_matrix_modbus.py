@@ -9,6 +9,8 @@ import math
 # External Library
 import cv2
 import numpy as np
+from fairino import Robot
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 def pose_estimation(image: np.ndarray,matrix_coefficients_path: (str), distortion_coefficients_path: (str),marker_length: float = 0.07, aruco_dict_type: int = cv2.aruco.DICT_5X5_100) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -88,7 +90,7 @@ def capture_image(output: str):
     cv2.destroyAllWindows
 
 
-def calculate_T_camera_marker(image_path: str):
+def calculate_T_camera_marker(image_path):
     """
     !Calculate the Tcamera_marker by using the captured image from "save_pictures" folder and save the matrix to transforms.json
 
@@ -96,10 +98,9 @@ def calculate_T_camera_marker(image_path: str):
     """
     T_cam_marker = np.eye(4)
     INPUT_DIR = PROJECT_ROOT / "input"
-    image_full_path = PROJECT_ROOT / "saved_pictures" / image_path
-    
-    frame = cv2.imread(image_full_path)
-
+    #image_full_path = PROJECT_ROOT / "saved_pictures" / image_path
+    #frame = cv2.imread(image_full_path)
+    frame = image_path
     matrix_coefficients_path = INPUT_DIR / "calibration_matrix.npy"
     distortion_coefficients_path = INPUT_DIR / "distortion_coefficients.npy"
     estimated_frame, rvec, tvec = pose_estimation(
@@ -109,35 +110,18 @@ def calculate_T_camera_marker(image_path: str):
             )
     print("rvec: ", rvec)
     print("tvec: ", tvec)
+    R_cm = None
+    tvec1 = None
     rvec1 = rvec.flatten()
     tvec1 = tvec.flatten()
     R_cm, _ = cv2.Rodrigues(rvec1)
     T_cam_marker[:3, :3] = R_cm
     T_cam_marker[:3, 3] = tvec1
-    print("T_cam_marker calculated:")
-    print(T_cam_marker)
+    #print("T_cam_marker calculated:")
+    #print(T_cam_marker)
 
-    JSON_PATH = PROJECT_ROOT / "data" / "transforms.json"
-    # Load existing data if file exists
-    # Load existing data or start empty
-    if os.path.exists(JSON_PATH):
-        with open(JSON_PATH, "r") as f:
-            data = json.load(f)
-    else:
-        data = {}
+    return T_cam_marker
 
-    # Ensure "cam_marker" key exists
-    if "cam_marker" not in data:
-        data["cam_marker"] = []
-
-    # Append the new pose
-    data["cam_marker"].append(T_cam_marker.tolist())
-
-    # Save back to JSON
-    with open(JSON_PATH, "w") as f:
-        json.dump(data, f, indent=4)
-
-    print(f"Cam marker saved! Total transforms: {len(data['cam_marker'])}")
 
 
 def calculate_T_base_ee(x: float, y: float, z: float, rx: float, ry: float, rz: float):
@@ -170,41 +154,79 @@ def calculate_T_base_ee(x: float, y: float, z: float, rx: float, ry: float, rz: 
 
     # Combined rotation (Z * Y * X)
     R_ee = R_z @ R_y @ R_x
-
+    scale = 0.001 #for metres conversion
     # Homogeneous transformation
     T_base_ee = np.eye(4)
     T_base_ee[:3, :3] = R_ee
-    T_base_ee[:3, 3] = [x, y, z]
+    T_base_ee[:3, 3] = [x *scale , y *scale, z * scale]
 
-    print("T_base_ee calculated:")
-    print(T_base_ee)
+    #print("T_base_ee calculated:")
+    #print(T_base_ee)
 
-    JSON_PATH = PROJECT_ROOT / "data" / "transforms.json"
+    #JSON_PATH = PROJECT_ROOT / "data" / "transforms.json"
 
-    if os.path.exists(JSON_PATH):
-        with open(JSON_PATH, "r") as f:
-            data = json.load(f)
-    else:
-        data = {}
-
-    # Ensure "base_ee" key exists
-    if "base_ee" not in data:
-        data["base_ee"] = []
-
-    # Append the new pose
-    data["base_ee"].append(T_base_ee.tolist())
-
-    # Save back to JSON
-    with open(JSON_PATH, "w") as f:
-        json.dump(data, f, indent=4)
-
-    print(f"Base EE saved! Total transforms: {len(data['base_ee'])}")
-
-
+    return T_base_ee
 
 #capture_image("images1.jpg")
 #calculate_T_base_ee(-549.362,42.653,561.389,6.518,54.629,159.229)
-calculate_T_camera_marker("images1.jpg")
+
+def main():
+    cap = cv2.VideoCapture(1)
+    t_cam_marker = None
+    t_base_ee = None
+    PROJECT_ROOT = Path(__file__).resolve().parent.parent
+    JSON_PATH = PROJECT_ROOT / "data" / "transforms.json"
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+
+        pose = []
+        cv2.imshow("matrix_calcuation", frame)
+        key = cv2.waitKey(1) & 0xFF
+        if key == ord('c'):
+            t_cam_marker = calculate_T_camera_marker(frame)
+            print("t_cam_marker: ", t_cam_marker)
+            robot = Robot.RPC('192.168.58.2')
+            error, pose = robot.GetActualTCPPose()
+            t_base_ee = calculate_T_base_ee(pose[0],pose[1],pose[2],pose[3],pose[4],pose[5])
+            robot.CloseRPC()
+            print("t_base_ee: ", t_base_ee)
+        elif key == ord('s'):
+            if t_cam_marker is None or t_base_ee is None:
+                print("⚠️  No data to save yet — press 'c' first!")
+                continue
+
+            # Read existing data if file exists
+            if JSON_PATH.exists():
+                with open(JSON_PATH, "r") as f:
+                    data = json.load(f)
+            else:
+                data = []
+
+            # Append new pair (convert np arrays to list)
+            data.append({
+                "T_cam_marker": np.array(t_cam_marker).tolist(),
+                "T_base_ee": np.array(t_base_ee).tolist()
+            })
+
+            # Write back to file
+            with open(JSON_PATH, "w") as f:
+                json.dump(data, f, indent=4)
+            
+            print(f"✅ Saved pair to {JSON_PATH.name}")
+
+        elif key == ord('q'):
+            break
+    cap.release()
+    cv2.destroyAllWindows()
+
+if __name__ == "__main__":
+    main()
+
+             
+        
 
 
 
