@@ -1,9 +1,10 @@
-scripts/dict.py
+
 scripts/draw_center.py
-scripts/calibration.py
 scripts/circle_test.py
 scripts/second_station.ipynb
-scripts/tsailenz.py
+scripts/tcam_marker.py
+scripts/test.py
+scripts/collect_calibration.py
 log
 *.mp4
 *.avi
@@ -13,3 +14,4 @@ __pycache__
 fairino-python-sdk-main
 utils
 .vscode/
+camera_cal_old
