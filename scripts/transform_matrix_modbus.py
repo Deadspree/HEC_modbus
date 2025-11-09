@@ -106,7 +106,7 @@ def calculate_T_camera_marker(image_path):
     estimated_frame, rvec, tvec = pose_estimation(
                 image=frame,
                 matrix_coefficients_path=matrix_coefficients_path,
-                distortion_coefficients_path=distortion_coefficients_path,
+                distortion_coefficients_path=distortion_coefficients_path
             )
     print("rvec: ", rvec)
     print("tvec: ", tvec)
@@ -171,6 +171,17 @@ def calculate_T_base_ee(x: float, y: float, z: float, rx: float, ry: float, rz: 
 #calculate_T_base_ee(-549.362,42.653,561.389,6.518,54.629,159.229)
 
 def main():
+    color = (0, 255, 0)  # green
+    radius = 10
+    thickness = -1  # filled circle
+
+    # Define four points (corners of a workspace)
+    points = [
+        (100, 100),  # top-left
+        (540, 100),  # top-right
+        (100, 380),  # bottom-left
+        (540, 380)   # bottom-right
+    ]
     cap = cv2.VideoCapture(1)
     t_cam_marker = None
     t_base_ee = None
@@ -183,7 +194,18 @@ def main():
 
 
         pose = []
-        cv2.imshow("matrix_calcuation", frame)
+        INPUT_DIR = PROJECT_ROOT / "input"
+        #image_full_path = PROJECT_ROOT / "saved_pictures" / image_path
+        #frame = cv2.imread(image_full_path)
+        in_frame = frame.copy()
+        matrix_coefficients_path = INPUT_DIR / "calibration_matrix.npy"
+        distortion_coefficients_path = INPUT_DIR / "distortion_coefficients.npy"
+        estimated_frame, rvec, tvec = pose_estimation(
+                    image=in_frame,
+                    matrix_coefficients_path=matrix_coefficients_path,
+                    distortion_coefficients_path=distortion_coefficients_path
+            )
+        cv2.imshow("real time", estimated_frame)
         key = cv2.waitKey(1) & 0xFF
         if key == ord('c'):
             t_cam_marker = calculate_T_camera_marker(frame)
