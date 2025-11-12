@@ -5,6 +5,7 @@ scripts/second_station.ipynb
 scripts/tcam_marker.py
 scripts/test.py
 scripts/collect_calibration.py
+scripts/marker_to_camera.py
 log
 *.mp4
 *.avi

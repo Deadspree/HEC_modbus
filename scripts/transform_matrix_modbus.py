@@ -69,13 +69,16 @@ def capture_image(output: str):
     @output (str): Name of the out image     (example.jpg)
     """
     cap = cv2.VideoCapture(1)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 3840)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 2160)
+    #cap.set(cv2.CAP_PROP_AUTOFOCUS, 0)
 
 
     if not cap.isOpened():
         print("Cannot open camera")
         exit()
 
-    time.sleep(2)
+    time.sleep(5)
     ret, frame = cap.read()
 
     if not ret:
@@ -90,7 +93,7 @@ def capture_image(output: str):
     cv2.destroyAllWindows
 
 
-def calculate_T_camera_marker(image_path):
+def calculate_T_camera_marker(image_path) -> np.ndarray:
     """
     !Calculate the Tcamera_marker by using the captured image from "save_pictures" folder and save the matrix to transforms.json
 
@@ -124,7 +127,7 @@ def calculate_T_camera_marker(image_path):
 
 
 
-def calculate_T_base_ee(x: float, y: float, z: float, rx: float, ry: float, rz: float):
+def calculate_T_base_ee(x: float, y: float, z: float, rx: float, ry: float, rz: float) -> np.ndarray:
     """
     !Calculate T_base_ee from the robot pose and save it to transforms.json
 
@@ -169,6 +172,51 @@ def calculate_T_base_ee(x: float, y: float, z: float, rx: float, ry: float, rz: 
 
 #capture_image("images1.jpg")
 #calculate_T_base_ee(-549.362,42.653,561.389,6.518,54.629,159.229)
+
+
+def transform_to_pose6dof_deg(T: np.ndarray):
+    """
+    Convert a 4x4 homogeneous transform to [x, y, z, rx, ry, rz],
+    where translation is in meters and rotation is in degrees (roll, pitch, yaw).
+    
+    Input:
+        T: 4x4 numpy array (homogeneous transform)
+    
+    Returns:
+        pose_6dof: np.array([x, y, z, rx_deg, ry_deg, rz_deg])
+    """
+    if T.shape != (4, 4):
+        raise ValueError("Input must be a 4x4 homogeneous matrix")
+
+    R = T[:3, :3]
+    t = T[:3, 3]
+
+    # Ensure R is a proper rotation (orthonormalize if necessary)
+    U, _, Vt = np.linalg.svd(R)
+    R = U @ Vt
+    if np.linalg.det(R) < 0:
+        U[:, -1] *= -1
+        R = U @ Vt
+
+    # Extract Euler angles (roll-pitch-yaw, X-Y-Z) in radians
+    sy = math.sqrt(R[0, 0]**2 + R[1, 0]**2)
+    singular = sy < 1e-6
+
+    if not singular:
+        roll = math.atan2(R[2, 1], R[2, 2])
+        pitch = math.atan2(-R[2, 0], sy)
+        yaw = math.atan2(R[1, 0], R[0, 0])
+    else:
+        roll = math.atan2(-R[1, 2], R[1, 1])
+        pitch = math.atan2(-R[2, 0], sy)
+        yaw = 0
+
+    # Convert radians → degrees
+    rx, ry, rz = map(math.degrees, [roll, pitch, yaw])
+
+    # Output [x, y, z, rx, ry, rz]
+    pose_6dof = np.array([t[0], t[1], t[2], rx, ry, rz])
+    return pose_6dof
 
 def main():
     color = (0, 255, 0)  # green
@@ -246,6 +294,8 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+#capture_image("circle1.png")
 
              
         

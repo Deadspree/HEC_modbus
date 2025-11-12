@@ -105,6 +105,7 @@ def main():
     # Extract homogeneous matrices
     T_base_ee_list = [np.array(item["T_base_ee"]) for item in data]
     T_cam_marker_list = [np.array(item["T_cam_marker"]) for item in data]
+    #print("T_base_ee_list_shape: ", T_base_ee_list[0].shape)
     cal_val = len(T_base_ee_list)
     # Get the desired matrix
     T_base_cam = calibrate_eye_hand(T_base_ee_list, T_cam_marker_list,cal_val)
