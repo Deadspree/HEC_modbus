@@ -1,0 +1,7 @@
+README.txt
+Robot.c
+setup.py
+fairino.egg-info/PKG-INFO
+fairino.egg-info/SOURCES.txt
+fairino.egg-info/dependency_links.txt
+fairino.egg-info/top_level.txt

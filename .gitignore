@@ -12,7 +12,6 @@ log
 *.jpg
 *.jpeg
 __pycache__
-fairino-python-sdk-main
 utils
 .vscode/
 camera_cal_old

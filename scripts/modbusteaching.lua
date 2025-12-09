@@ -1,4 +1,5 @@
 
+--calibration
 tool = 0 --tool number
 user = 0 --Object number
 vel = 70
@@ -47,3 +48,64 @@ while (1) do
     end
     WaitMs(800)
 end
+
+
+--operation
+tool = 0 --tool number
+user = 0 --Object number
+vel = 30
+acc = 30
+ovl = 50
+blendT = 50
+config = 1
+desc_pos1 = {0,0,0,0,0,0}
+desc_pos0 = {0,0,0,0,0,0}
+joint_pos_ref = {0,0,0,0,0,0}
+possible = 1
+x, y, z, rx, ry, rz = GetActualTCPPose()
+while (1) do
+if ModbusMasterReadAO(Modbus_0,start,1) == 0 then
+        desc_pos0 = {x,y,z,rx,ry,rz}
+    end
+    
+    while (1) do
+        move_val = ModbusMasterReadAO(Modbus_0,trigger_move,1)
+        operation_val = ModbusMasterReadAO(Modbus_0,operation_done,1)
+        if  move_val == 1 or operation_val == 1 then
+
+            if ModbusMasterReadAO(Modbus_0,operation_done,1) == 1 then
+                ModbusMasterWriteAO(Modbus_0,start,1,{0})
+                ModbusMasterWriteAO(Modbus_0,trigger_move,1,{0})
+                ModbusMasterWriteAO(Modbus_0,operation_done,1,{0})
+                break
+            end
+
+            x_move = ModbusMasterReadAO(Modbus_0,x_move,1)
+            y_move = ModbusMasterReadAO(Modbus_0,y_move,1)
+            z_move = ModbusMasterReadAO(Modbus_0,z_move,1)
+            rx_move = ModbusMasterReadAO(Modbus_0,rx_move,1)
+            ry_move = ModbusMasterReadAO(Modbus_0,ry_move,1)
+            rz_move = ModbusMasterReadAO(Modbus_0,rz_move,1)
+            desc_pos1 = {x_move,y_move,z_move,rx_move,ry_move,rz_move}
+            j1,j2,j3,j4,j5,j6 = GetInverseKin(0,x_move,y_move,z_move,rx_move,ry_move,rz_move,-1)
+            MoveJ(j1,j2,j3,j4,j5,j6,x_move,y_move,z_move,rx_move,ry_move,rz_move,0,0,50,180,100,0.000,0.000,0.000,0.000,0,0,0,0,0,0,0,0)
+            WaitMs(2000)
+            while (1) do
+                if GetRobotMotionDone() == 1 then
+                    break
+                end
+            end
+            a1,a2,a3,a4,a5,a6 = GetInverseKin(0,x,y,z,rx,ry,rz,-1)
+            RegisterVar("number", "a1")
+            MoveJ(a1,a2,a3,a4,a5,a6,x,y,z,rx,ry,rz,0,0,50,180,100,0.000,0.000,0.000,0.000,0,0,0,0,0,0,0,0)
+            WaitMs(1000)
+            while (1) do
+                if GetRobotMotionDone() == 1 then
+                    ModbusMasterWriteAO(Modbus_0,trigger_move,1,{0})
+                    break
+                end
+            end
+        end
+    end
+end
+                    

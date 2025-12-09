@@ -57,41 +57,112 @@ def calibrate_eye_hand(T_base_ee_list: list[np.ndarray], T_cam_marker_list: list
         #T_base_cam[2, 3] = 0.55
 
         
-    # Test matrix accuracy
-    trans_errors = []
-    rot_errors = []
-    z_errors = []
-    x_errors = []
-    y_errors = []
-    for i in range(len(T_base_ee_list)-1):
-        lhs = T_ee_base_list[i] @ T_base_cam @ T_cam_marker_list[i]
-        rhs = T_ee_base_list[i+1] @ T_base_cam @ T_cam_marker_list[i+1]
-        
-        # Translation error (Euclidean distance)
-        t_err = np.linalg.norm(lhs[:3, 3] - rhs[:3, 3])
-        #print("t_err:", t_err)
-        trans_errors.append(t_err)
-        
+        # Test matrix accuracy
+        trans_errors = []
+        rot_errors = []
+        z_errors = []
+        x_errors = []
+        y_errors = []
+        count_below_0_05 = 0      # < 0.05 mm  ( = 0.00005 m )
+        count_below_0_1  = 0      # < 0.1 mm   ( = 0.00010 m )
+        count_above_0_15 = 0      # > 0.15 mm  ( = 0.00015 m )
+        for i in range(len(T_base_ee_list)-1):
+            lhs = T_ee_base_list[i] @ T_base_cam @ T_cam_marker_list[i]
+            rhs = T_ee_base_list[i+1] @ T_base_cam @ T_cam_marker_list[i+1]
+            
+            # Translation error (Euclidean distance)
+            t_err = np.linalg.norm(lhs[:3, 3] - rhs[:3, 3])
+            #print("t_err:", t_err)
+            if t_err < 0.00005:
+                count_below_0_05 += 1
 
-        z_error = np.linalg.norm(lhs[2,3]-rhs[2,3])
-        z_errors.append(z_error)
-        y_error = np.linalg.norm(lhs[1,3]-rhs[1,3])
-        y_errors.append(y_error)
-        x_error = np.linalg.norm(lhs[0,3]-rhs[0,3])
-        x_errors.append(x_error)
-        # Rotation error (angle difference in degrees)
-        R_err = Rotation.from_matrix(lhs[:3, :3].T @ rhs[:3, :3])
-        rot_angle = R_err.magnitude() * 180/np.pi
-        #print("rot_angle", rot_angle)
-        rot_errors.append(rot_angle)
-    print("Mean translation error (m):", np.mean(trans_errors))
-    print("Mean rotation error (deg):", np.mean(rot_errors))
-    print("z translation error [m]: ", np.mean(z_errors))
-    print("y translation error [m]: ", np.mean(y_errors))
-    print("x translation error [m]: ", np.mean(x_errors))
-   
-    return T_base_cam
+            if t_err < 0.00010:
+                count_below_0_1 += 1
 
+            if t_err > 0.00015:
+                count_above_0_15 += 1
+            trans_errors.append(t_err)
+            
+
+            z_error = lhs[2,3]-rhs[2,3]
+            z_errors.append(z_error)
+            y_error = lhs[1,3]-rhs[1,3]
+            y_errors.append(y_error)
+            x_error = lhs[0,3]-rhs[0,3]
+            x_errors.append(x_error)
+            # Rotation error (angle difference in degrees)
+            R_err = Rotation.from_matrix(lhs[:3, :3].T @ rhs[:3, :3])
+            rot_angle = R_err.magnitude() * 180/np.pi
+            #print("rot_angle", rot_angle)
+            rot_errors.append(rot_angle)
+        print("Mean translation error (m):", np.mean(trans_errors))
+        print("Mean rotation error (deg):", np.mean(rot_errors))
+        print("z translation error [m]: ", np.mean(z_errors))
+        print("y translation error [m]: ", np.mean(y_errors))
+        print("x translation error [m]: ", np.mean(x_errors))
+        print("Pairs < 0.05 mm :", count_below_0_05)
+        print("Pairs < 0.10 mm :", count_below_0_1)
+        print("Pairs > 0.15 mm :", count_above_0_15)
+    
+        return T_base_cam
+    else:
+        # calibrate eye-on-hand
+        R_cam2gripper, t_cam2gripper = cv2.calibrateHandEye(
+            R_gripper2base=R_ee2base[0:cal_val],
+            t_gripper2base=t_ee2base[0:cal_val],
+            R_target2cam=R_marker2cam[0:cal_val],
+            t_target2cam=t_marker2cam[0:cal_val],
+            method = cv2.CALIB_HAND_EYE_TSAI)
+        T_gripper_cam = np.eye(4)
+        T_gripper_cam[:3,:3] = R_cam2gripper
+        T_gripper_cam[:3, 3] = t_cam2gripper.flatten()
+
+        # Test matrix accuracy
+        trans_errors = []
+        rot_errors = []
+        z_errors = []
+        x_errors = []
+        y_errors = []
+        count_below_0_05 = 0      # < 0.05 mm  ( = 0.00005 m )
+        count_below_0_1  = 0      # < 0.1 mm   ( = 0.00010 m )
+        count_above_0_15 = 0      # > 0.15 mm  ( = 0.00015 m )
+        for i in range(len(T_base_ee_list)-1):
+            lhs = T_base_ee_list[i] @ T_gripper_cam @ T_cam_marker_list[i]
+            rhs = T_base_ee_list[i+1] @ T_gripper_cam @ T_cam_marker_list[i+1]
+            # Translation error (Euclidean distance)
+            t_err = np.linalg.norm(lhs[:3, 3] - rhs[:3, 3])
+            #print("t_err:", t_err)
+            if t_err < 0.00005:
+                count_below_0_05 += 1
+
+            if t_err < 0.00010:
+                count_below_0_1 += 1
+
+            if t_err > 0.00015:
+                count_above_0_15 += 1
+            trans_errors.append(t_err)
+            
+
+            z_error = lhs[2,3]-rhs[2,3]
+            z_errors.append(z_error)
+            y_error = lhs[1,3]-rhs[1,3]
+            y_errors.append(y_error)
+            x_error = lhs[0,3]-rhs[0,3]
+            x_errors.append(x_error)
+            # Rotation error (angle difference in degrees)
+            R_err = Rotation.from_matrix(lhs[:3, :3].T @ rhs[:3, :3])
+            rot_angle = R_err.magnitude() * 180/np.pi
+            #print("rot_angle", rot_angle)
+            rot_errors.append(rot_angle)
+        print("Mean translation error (m):", np.mean(trans_errors))
+        print("Mean rotation error (deg):", np.mean(rot_errors))
+        print("z translation error [m]: ", np.mean(z_errors))
+        print("y translation error [m]: ", np.mean(y_errors))
+        print("x translation error [m]: ", np.mean(x_errors))
+        print("Pairs < 0.05 mm :", count_below_0_05)
+        print("Pairs < 0.10 mm :", count_below_0_1)
+        print("Pairs > 0.15 mm :", count_above_0_15)
+        return T_gripper_cam
 
 def main():
     """
@@ -108,9 +179,13 @@ def main():
     #print("T_base_ee_list_shape: ", T_base_ee_list[0].shape)
     cal_val = len(T_base_ee_list)
     # Get the desired matrix
-    T_base_cam = calibrate_eye_hand(T_base_ee_list, T_cam_marker_list,cal_val)
+    T_gripper_cam = calibrate_eye_hand(T_base_ee_list, T_cam_marker_list,cal_val, eye_to_hand = False)
     print("Samples used: \n", cal_val)
-    print("T_base_cam: \n", T_base_cam)
+    print("T_base_cam: \n", T_gripper_cam)
+    OUTPUT_PATH = PROJECT_ROOT / "data" / "calibrated_matrix.json"
+    output_dict = {"T_gripper_cam": T_gripper_cam.tolist()}
+    with open(OUTPUT_PATH, "w") as f:
+        json.dump(output_dict, f, indent=4)
     
 
 if __name__ == "__main__":

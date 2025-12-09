@@ -13,7 +13,84 @@ from fairino import Robot
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
-def pose_estimation(image: np.ndarray,matrix_coefficients_path: (str), distortion_coefficients_path: (str),marker_length: float = 0.07, aruco_dict_type: int = cv2.aruco.DICT_5X5_100) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+def charuco_pose_estimation(image: np.ndarray,matrix_coefficients_path: (str), distortion_coefficients_path: (str),marker_length: float = 0.022, square_length: float  = 0.03, aruco_dict_type: int = cv2.aruco.DICT_5X5_100):
+    """
+    !Charuco board pose estimation
+    @image (np.ndarray): input image
+    @matrix_coefficients_path (str): path to matrix coefficient file
+    @distortion_coefficients_path (str): path to distortion coefficient file
+    @marker_length (float): length of marker in metres
+    @square_length (float): length of each square in metres
+    @aruco_dict_type: Type of dictionary for available aruco dictionary
+    """
+    cameraMatrix = np.load(matrix_coefficients_path)
+    distCoeffs = np.load(distortion_coefficients_path)
+
+    squareLength = square_length
+    markerLength = marker_length
+    dictionary = cv2.aruco.getPredefinedDictionary(aruco_dict_type)
+
+    board = cv2.aruco.CharucoBoard((6, 4), squareLength, markerLength, dictionary)
+
+    # ---- ArUco marker detection ----
+    detector_params = cv2.aruco.DetectorParameters()
+    detector_params.cornerRefinementMethod = cv2.aruco.CORNER_REFINE_APRILTAG
+    detector = cv2.aruco.ArucoDetector(dictionary, detector_params)
+
+    marker_corners, marker_ids, rejected = detector.detectMarkers(image)
+    immarkers = cv2.aruco.drawDetectedMarkers(image.copy(), marker_corners, marker_ids)
+
+    # ---- Charuco detection ----
+    charuco_detector = cv2.aruco.CharucoDetector(board)
+    charuco_corners, charuco_ids, charuco_marker_corners, charuco_marker_ids = charuco_detector.detectBoard(
+        image,
+        markerCorners=marker_corners,
+        markerIds=marker_ids
+    )
+    rvec = None
+    tvec = None
+    if charuco_ids is not None and len(charuco_corners) > 0:
+
+        cv2.aruco.drawDetectedCornersCharuco(image, charuco_corners, charuco_ids)
+
+        # ---- SolvePnP using Charuco corners ----
+        objPoints, imgPoints = board.matchImagePoints(charuco_corners, charuco_ids)
+
+        if len(objPoints) >= 6:
+            valid, rvec, tvec = cv2.solvePnP(objPoints, imgPoints, cameraMatrix, distCoeffs)
+            cv2.drawFrameAxes(image, cameraMatrix, distCoeffs, rvec, tvec, squareLength*3)
+
+    return image, rvec, tvec
+
+
+def calculate_T_cam_charuco(image: np.ndarray) -> np.ndarray:
+    """
+    !Calculate the homogenous transform matrix from camera to charuco
+    @image (np.ndarry): input image
+    """
+    T_cam_charuco = np.eye(4)
+    INPUT_DIR = PROJECT_ROOT / "input"
+    #image_full_path = PROJECT_ROOT / "saved_pictures" / image_path
+    #frame = cv2.imread(image_full_path)
+    frame = image
+    matrix_coefficients_path = INPUT_DIR / "calibration_matrix.npy"
+    distortion_coefficients_path = INPUT_DIR / "distortion_coefficients.npy"
+    estimated_frame, rvec, tvec = charuco_pose_estimation(
+                image=frame,
+                matrix_coefficients_path=matrix_coefficients_path,
+                distortion_coefficients_path=distortion_coefficients_path
+            )
+    R_cm = None
+    tvec1 = None
+    rvec1 = rvec.flatten()
+    tvec1 = tvec.flatten()
+    R_cm, _ = cv2.Rodrigues(rvec1)
+    T_cam_charuco[:3, :3] = R_cm
+    T_cam_charuco[:3, 3] = tvec1
+    return T_cam_charuco
+
+
+def pose_estimation(image: np.ndarray,matrix_coefficients_path: (str), distortion_coefficients_path: (str),marker_length: float = 0.10, aruco_dict_type: int = cv2.aruco.DICT_5X5_100) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     !Perform pose estimation on each frame
 
@@ -39,13 +116,12 @@ def pose_estimation(image: np.ndarray,matrix_coefficients_path: (str), distortio
     rvec, tvec = None, None
     if ids is not None and len(corners) > 0:
         cv2.aruco.drawDetectedMarkers(image, corners, ids)
-
         # 3D object points of a square marker (center at origin, lying on z=0 plane)
         obj_points = np.array([
-            [-marker_length/2,  marker_length/2, 0],
-            [ marker_length/2,  marker_length/2, 0],
-            [ marker_length/2, -marker_length/2, 0],
-            [-marker_length/2, -marker_length/2, 0]
+            [0, marker_length, 0],    # TL -> Top-left in image
+            [marker_length, marker_length, 0],  # TR
+            [marker_length, 0, 0],    # BR
+            [0, 0, 0]                 # BL -> origin
         ], dtype=np.float32)
 
         for i, corner in enumerate(corners):
@@ -219,18 +295,17 @@ def transform_to_pose6dof_deg(T: np.ndarray):
     return pose_6dof
 
 def main():
-    color = (0, 255, 0)  # green
-    radius = 10
-    thickness = -1  # filled circle
 
-    # Define four points (corners of a workspace)
-    points = [
-        (100, 100),  # top-left
-        (540, 100),  # top-right
-        (100, 380),  # bottom-left
-        (540, 380)   # bottom-right
-    ]
-    cap = cv2.VideoCapture(1)
+    cap = cv2.VideoCapture(1, cv2.CAP_DSHOW)
+    cap.set(cv2.CAP_PROP_AUTOFOCUS, 0)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
+    cap.set(cv2.CAP_PROP_EXPOSURE, -4)
+
+    # Có thể thêm giảm gain
+    cap.set(cv2.CAP_PROP_GAIN, 0) 
+    cv2.namedWindow("Camera", cv2.WINDOW_NORMAL)
+    cv2.resizeWindow("Camera", 960, 540)
     t_cam_marker = None
     t_base_ee = None
     PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -240,7 +315,6 @@ def main():
         if not ret:
             break
 
-
         pose = []
         INPUT_DIR = PROJECT_ROOT / "input"
         #image_full_path = PROJECT_ROOT / "saved_pictures" / image_path
@@ -248,15 +322,15 @@ def main():
         in_frame = frame.copy()
         matrix_coefficients_path = INPUT_DIR / "calibration_matrix.npy"
         distortion_coefficients_path = INPUT_DIR / "distortion_coefficients.npy"
-        estimated_frame, rvec, tvec = pose_estimation(
+        estimated_frame, rvec, tvec = charuco_pose_estimation(
                     image=in_frame,
                     matrix_coefficients_path=matrix_coefficients_path,
                     distortion_coefficients_path=distortion_coefficients_path
             )
-        cv2.imshow("real time", estimated_frame)
+        cv2.imshow("Camera", estimated_frame)
         key = cv2.waitKey(1) & 0xFF
         if key == ord('c'):
-            t_cam_marker = calculate_T_camera_marker(frame)
+            t_cam_marker = calculate_T_cam_charuco(frame)
             print("t_cam_marker: ", t_cam_marker)
             robot = Robot.RPC('192.168.58.2')
             error, pose = robot.GetActualTCPPose()
