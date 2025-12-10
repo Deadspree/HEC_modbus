@@ -450,6 +450,7 @@ def calculate_T_base_ee(x: float, y: float, z: float, rx: float, ry: float, rz: 
     T_base_ee[:3, 3] = [x *scale , y *scale, z * scale]
     return T_base_ee
 
+
 def main():
     '''
     !Pipeline: From taking input image to detect the circle pose in robot base frame
@@ -460,13 +461,9 @@ def main():
     robot = Robot.RPC('192.168.58.2')
     time.sleep(0.05)   # important small delay!
     error, pose = robot.GetActualTCPPose()
-    print("Current robot pose: \n", pose)
     T_base_gripper = calculate_T_base_ee(pose[0],pose[1],pose[2],pose[3],pose[4],pose[5])
     T_cam_marker = calculate_T_cam_april(image)
     print("T_cam_marker: ", T_cam_marker)
-
-
-
     #T_cam_circle = calculate_T_cam_circle(image, x_to_corner = -0.042, y_to_corner = -0.014)
     #print("T_cam_circle: \n", T_cam_circle)
     JSON_PATH = PROJECT_ROOT / "data" / "calibrated_matrix.json"
@@ -475,23 +472,22 @@ def main():
     T_gripper_cam = np.array(data["T_gripper_cam"])
     #T_base_circle = T_base_cam @ T_cam_circle
     #print("T_base_circle: \n", T_base_circle)
-
-    print("T_base_gripper: val\n", T_base_gripper)
-    print("T_base_gripper: \n", T_base_gripper.shape)
-    print("T_gripper_cam: \n", T_gripper_cam.shape)
-    print("T_cam_marker: \n", T_cam_marker.shape)
     T_base_marker = T_base_gripper @  T_gripper_cam @ T_cam_marker
-    T_base_marker[0,3] += 0.0246
-    T_base_marker[1, 3] += -0.017472
-    T_base_marker[2,3] -= 0.093923
+    #T_base_marker[0,3] += 0.0246
+    #T_base_marker[1, 3] += -0.017472
+    #T_base_marker[2,3] -= 0.093923
     print("T_base_marker: \n", T_base_marker)
     T_safe = compute_safe_top_down_pose(T_base_marker)
     print("T_safe =\n", T_safe)
-    position = transform_to_pose6dof_deg(T_safe)
+    position_pick = transform_to_pose6dof_deg(T_safe)
+    position_place = position_pick.copy()
+    position_place[2] += 100 # increase z to pplace
     #position[2] += 130 # off set z to avoid collision
     #position[0] += 3.
     #position[1] -= 4
-    print("position: \n", ",".join(map(str, position.flatten())))
+    print("position pick: \n", ",".join(map(str, position_pick.flatten())))
+    print("position place: \n", ",".join(map(str, position_place.flatten())))
+     # Calculate circle position in base frame for verification
     P_circle_marker = np.array([0.08, -0.058, 0.0, 1.0])
     P_base_circle = T_base_marker @ P_circle_marker
 

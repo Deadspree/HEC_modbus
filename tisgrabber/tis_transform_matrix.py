@@ -314,10 +314,14 @@ def main():
                                 shape=(Height.value,
                                         Width.value,
                                         bpp))
- 
+                # for visualization
                 frame = image.copy()
                 frame = np.ascontiguousarray(frame)
                 frame = cv2.flip(frame, 0)
+                # for pose estimation
+                temp = image.copy()
+                temp = np.ascontiguousarray(temp)
+                temp = cv2.flip(temp, 0)
                 matrix_coefficients_path = PROJECT_ROOT / "input" / "calibration_matrix.npy"
                 distortion_coefficients_path = PROJECT_ROOT / "input" / "distortion_coefficients.npy"
                 estimated_frame, rvec, tvec = charuco_pose_estimation(
@@ -330,7 +334,8 @@ def main():
                 cv2.imshow("TIS Camera", estimated_frame)
                 key = cv2.waitKey(1) & 0xFF
                 if key == ord('c'):
-                    t_cam_marker = calculate_T_cam_charuco(frame)
+                    cv2.imwrite("temp_calib_image.jpg", temp)
+                    t_cam_marker = calculate_T_cam_charuco(temp)
                     print("T_cam_charuco:", t_cam_marker)
                     robot = Robot.RPC('192.168.58.2')
                     _, pose = robot.GetActualTCPPose()
