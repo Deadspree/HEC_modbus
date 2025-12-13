@@ -1,9 +1,10 @@
 from pathlib import Path
 import os
-import ctypes 
+import ctypes
 import tisgrabber as tis
 import cv2
 import numpy as np
+
 # --- Configuration ---
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
@@ -31,8 +32,9 @@ if ic.IC_IsDevValid(hGrabber):
             BitsPerPixel = ctypes.c_int()
             colorformat = ctypes.c_int()
 
-            ic.IC_GetImageDescription(hGrabber, Width, Height,
-                                      BitsPerPixel, colorformat)
+            ic.IC_GetImageDescription(
+                hGrabber, Width, Height, BitsPerPixel, colorformat
+            )
 
             bpp = BitsPerPixel.value // 8
             buffer_size = Width.value * Height.value * bpp
@@ -40,15 +42,14 @@ if ic.IC_IsDevValid(hGrabber):
             imagePtr = ic.IC_GetImagePtr(hGrabber)
 
             imagedata = ctypes.cast(
-                imagePtr,
-                ctypes.POINTER(ctypes.c_ubyte * buffer_size)
+                imagePtr, ctypes.POINTER(ctypes.c_ubyte * buffer_size)
             )
 
-            image = np.ndarray(buffer=imagedata.contents,
-                               dtype=np.uint8,
-                               shape=(Height.value,
-                                      Width.value,
-                                      bpp))
+            image = np.ndarray(
+                buffer=imagedata.contents,
+                dtype=np.uint8,
+                shape=(Height.value, Width.value, bpp),
+            )
             image = np.ascontiguousarray(image)
             image = cv2.flip(image, 0)
             # Convert RGB to BGR for OpenCV
@@ -59,17 +60,19 @@ if ic.IC_IsDevValid(hGrabber):
                 image = cv2.cvtColor(image, cv2.COLOR_RGBA2BGR)
             """
             cv2.namedWindow("Window", cv2.WINDOW_NORMAL)
-            cv2.resizeWindow("Window", 960, 540) # just for visulization, not output image resolution
+            cv2.resizeWindow(
+                "Window", 960, 540
+            )  # just for visulization, not output image resolution
             cv2.imshow("Window", image)
             key = cv2.waitKey(1) & 0xFF
-            if key == ord('s'):
+            if key == ord("s"):
                 # Save image
                 img_name = f"{IMAGE_PREFIX}_{img_counter:03d}{IMG_EXT}"
                 save_path = os.path.join(SAVE_DIR, img_name)
                 cv2.imwrite(save_path, image)
                 print(f"💾 Saved {save_path}")
                 img_counter += 1
-            if key == ord('q'):
+            if key == ord("q"):
                 break
 
         else:
@@ -82,4 +85,3 @@ else:
     ic.IC_MsgBox(tis.T("No device opened"), tis.T("Simple Live Video"))
 
 ic.IC_ReleaseGrabber(hGrabber)
-

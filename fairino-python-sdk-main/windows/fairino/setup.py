@@ -1,33 +1,8 @@
-# setup.py — unified build + install for fairino SDK
-#
-# Works with: Python 3.8–3.12
-# Usage:
-#   python setup.py build_ext --inplace      ← build Cython module
-#   pip install .                            ← install fairino as a package
-
-from setuptools import setup, Extension, find_packages
+# setup.py
+# python3 setup.py build_ext --inplace
+# python setup.py build_ext --inplace                   (python3.12之前的使用)
+# python setup.py build_ext --inplace  --compiler=msvc  (python3.12使用)
+from distutils.core import setup                   #  (python3.12之前的使用)
+from setuptools import setup                         #  (python3.12使用)
 from Cython.Build import cythonize
-import sys
-
-# Define your Cython extension
-ext_modules = cythonize(
-    [
-        Extension(
-            name="fairino.Robot",           # module path
-            sources=["Robot.py"],           # the source file
-            language="c",                   # target C code
-        )
-    ],
-    compiler_directives={"language_level": "3"},
-)
-
-# Package setup
-setup(
-    name="fairino",
-    version="1.0.0",
-    author="Fairino Robotics",
-    description="Python SDK for Fairino robot control",
-    packages=find_packages(),   # auto-detect __init__.py packages
-    ext_modules=ext_modules,    # include the compiled Robot module
-    python_requires=">=3.8",
-)
+setup(name='Robot', ext_modules=cythonize('Robot.py'))
