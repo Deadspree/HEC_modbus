@@ -1,0 +1,10 @@
+Metadata-Version: 1.2
+Name: fairino
+Version: 1.0.0
+Summary: Python SDK for Fairino robot control
+Home-page: UNKNOWN
+Author: Fairino Robotics
+License: UNKNOWN
+Description: UNKNOWN
+Platform: UNKNOWN
+Requires-Python: >=3.8

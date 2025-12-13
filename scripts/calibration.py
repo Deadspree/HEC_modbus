@@ -41,7 +41,7 @@ def calibrate(dirpath: str,square_size: int, width: int, height: int, visualize:
 
     for fname in images:
         img = cv2.imread(os.path.join(dirpath, fname))
-        img = cv2.resize(img,(640,480))
+        #img = cv2.resize(img,(640,480))
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
         # Find the chess board corners
@@ -63,7 +63,8 @@ def calibrate(dirpath: str,square_size: int, width: int, height: int, visualize:
 
 
     ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1], None, None)
-
+    #w, h = img.shape[:2]
+    #mtx, roi = cv2.getOptimalNewCameraMatrix(mtx, dist, (h,w), 1, (h,w))
     mean_error = 0
     for i in range(len(objpoints)):
         imgpoints2, _ = cv2.projectPoints(objpoints[i], rvecs[i], tvecs[i], mtx, dist)
