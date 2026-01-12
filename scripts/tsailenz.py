@@ -22,7 +22,7 @@ def calibrate_eye_hand(
     @cal_val (int): Decide numbers of matrixes input pair to calibrate on
     (choose a number that leave the at least 2 matrix pairs of the test)
     , the rest will go to test
-    @eye_to_hand (bool): Whether calibration is eye-on-hand or 
+    @eye_to_hand (bool): Whether calibration is eye-on-hand or
     eye-to-hand(Default = True)
     """
 
@@ -124,54 +124,45 @@ def calibrate_eye_hand(
         T_gripper_cam[:3, :3] = R_cam2gripper
         T_gripper_cam[:3, 3] = t_cam2gripper.flatten()
 
-        # Test matrix accuracy
         trans_errors = []
         rot_errors = []
-        z_errors = []
-        x_errors = []
-        y_errors = []
-        count_below_0_05 = 0  # < 0.05 mm  ( = 0.00005 m )
-        count_below_0_1 = 0  # < 0.1 mm   ( = 0.00010 m )
-        count_above_0_15 = 0  # > 0.15 mm  ( = 0.00015 m )
-        for i in range(len(T_base_ee_list) - 1):
-            lhs = T_base_ee_list[i] @ T_gripper_cam @ T_cam_marker_list[i]
-            rhs = (
-                T_base_ee_list[i + 1]
-                @ T_gripper_cam
-                @ T_cam_marker_list[i + 1]
+        x_errors, y_errors, z_errors = [], [], []
+
+        T_base_marker_list = []
+        for i in range(len(T_base_ee_list)):
+            T_base_marker = (
+                T_base_ee_list[i] @ T_gripper_cam @ T_cam_marker_list[i]
             )
-            # Translation error (Euclidean distance)
-            t_err = np.linalg.norm(lhs[:3, 3] - rhs[:3, 3])
-            # print("t_err:", t_err)
-            if t_err < 0.00005:
-                count_below_0_05 += 1
+            T_base_marker_list.append(T_base_marker)
 
-            if t_err < 0.00010:
-                count_below_0_1 += 1
+        # Calculate mean marker pose in base frame
+        mean_translation = np.mean(
+            [T[:3, 3] for T in T_base_marker_list], axis=0
+        )
 
-            if t_err < 0.00015:
-                count_above_0_15 += 1
+        # Error: deviation from mean marker position
+        for i, T_base_marker in enumerate(T_base_marker_list):
+            # Translation error
+            t_err = np.linalg.norm(T_base_marker[:3, 3] - mean_translation)
             trans_errors.append(t_err)
 
-            z_error = lhs[2, 3] - rhs[2, 3]
-            z_errors.append(z_error)
-            y_error = lhs[1, 3] - rhs[1, 3]
-            y_errors.append(y_error)
-            x_error = lhs[0, 3] - rhs[0, 3]
-            x_errors.append(x_error)
-            # Rotation error (angle difference in degrees)
-            R_err = Rotation.from_matrix(lhs[:3, :3].T @ rhs[:3, :3])
-            rot_angle = R_err.magnitude() * 180 / np.pi
-            # print("rot_angle", rot_angle)
-            rot_errors.append(rot_angle)
-        print("Mean translation error (m):", np.mean(trans_errors))
-        print("Mean rotation error (deg):", np.mean(rot_errors))
-        print("z translation error [m]: ", np.mean(z_errors))
-        print("y translation error [m]: ", np.mean(y_errors))
-        print("x translation error [m]: ", np.mean(x_errors))
-        print("Pairs < 0.05 mm :", count_below_0_05)
-        print("Pairs < 0.10 mm :", count_below_0_1)
-        print("Pairs > 0.15 mm :", count_above_0_15)
+            # Rotation error: compare with first pose as reference
+            if i > 0:
+                R_err = Rotation.from_matrix(
+                    T_base_marker_list[0][:3, :3].T @ T_base_marker[:3, :3]
+                )
+                rot_angle = R_err.magnitude() * 180 / np.pi
+                rot_errors.append(rot_angle)
+
+        # Print only mean errors
+        mean_trans_err = np.mean(trans_errors)
+        mean_rot_err = np.mean(rot_errors) if rot_errors else 0
+
+        print(
+            f"Mean translation error: {mean_trans_err*1000:.4f} mm"
+            f" ({mean_trans_err:.6f} m)"
+        )
+        print(f"Mean rotation error: {mean_rot_err:.4f}°")
         return T_gripper_cam
 
 
