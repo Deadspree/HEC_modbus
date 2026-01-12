@@ -263,7 +263,8 @@ def calculate_T_base_ee(
 
 def main():
     """
-    !Pipeline: From taking input image to detect the circle pose in robot base frame
+    !Pipeline: From taking input image to detect the circle pose in robot base
+    frame
     """
     ic = ctypes.cdll.LoadLibrary("./tisgrabber_x64.dll")
 
@@ -318,7 +319,8 @@ def main():
                     )
                     T_cam_marker = calculate_T_cam_april(image)
                     print("T_cam_marker: ", T_cam_marker)
-                    # T_cam_circle = calculate_T_cam_circle(image, x_to_corner = -0.042, y_to_corner = -0.014)
+                    # T_cam_circle = calculate_T_cam_circle(
+                    # image, x_to_corner = -0.042, y_to_corner = -0.014)
                     # print("T_cam_circle: \n", T_cam_circle)
                     JSON_PATH = (
                         PROJECT_ROOT / "data" / "calibrated_matrix.json"
